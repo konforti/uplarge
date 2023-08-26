@@ -54,7 +54,8 @@ label {
 #url {
   display: block;
   margin: 0 auto 1em auto;
-  width: 400px;
+  width: 350;
+  word-break: break-all;
 }
 
 .active {
