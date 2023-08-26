@@ -8,18 +8,27 @@
 
     <body>
         <div class="container">
-            <div id="clear" title="Clear File">ⓧ</div>
-            <input type="file" id="picker" />
-            <label id="picker-label" for="picker">Choose Or Drop Files</label>
-            <div class="progress-tools">
-                <progress id="progress" value="0" max="100"></progress>
-                <p id="status">0%</p>
+            <div class="upload-tools show">
+                Drop a file to upload <br /><br />
+                or <br /><br />
+                <input type="file" id="picker" />
+                <label id="picker-label" for="picker">Choose a File</label>
             </div>
-
-
+            <div class="progress-tools hide">
+                <p id="blink">🟢</p>
+                <br /><br />
+                <p id="status">0%</p>
+                <br /><br />
+                <progress id="progress" value="0" max="100"></progress>
+            </div>
+            <div class="finish-tools hide">
+                <p>Upload Completed Successfully!</p>
+                <a id="url" href="" target="_blank"></a>
+                <div id="err"></div>
+                <div id="clear" title="Clear File">Upload another one</div>
+            </div>
         </div>
-        <a id="url" href="" target="_blank"></a>
-        <div id="err"></div>
+
         <script type="module" src="index.js"></script>
     </body>
 </html>
