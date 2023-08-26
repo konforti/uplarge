@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "parcel ./example/index.html",
-    "build": "parcel build ./example/index.html",
+    "start": "parcel ./example/index.html --public-url ./",
+    "build": "parcel build ./example/index.html --public-url ./",
     "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
