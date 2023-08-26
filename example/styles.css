@@ -83,11 +83,13 @@ input[type="file"] {
 #status {
     font-size: 20px;
     margin-left: 10px;
+    display: inline-block;
 }
 
 #blink {
     animation: blinker 2s linear infinite;
     font-size: 10px;
+    display: inline-block;
 }
 @keyframes blinker {
     50% {
