@@ -9,6 +9,7 @@ let cloudName,
     fileSize,
     fromByte,
     toByte,
+    percent,
     retries,
     retriesCount,
     eventTarget;
@@ -58,6 +59,7 @@ function processFile(retry = false) {
                     fromByte = toByte;
                     processFile();
                 } else {
+                    percent = 100;
                     eventTarget.dispatchEvent(
                         new CustomEvent("success", {
                             detail: { response: JSON.parse(res.response) },
@@ -65,6 +67,7 @@ function processFile(retry = false) {
                     );
                 }
             } else if (retriesCount++ <= retries) {
+                console.info(`${retriesCount} retry of chunk ${chunkCount}`);
                 processFile(true);
             }
         })
@@ -123,10 +126,12 @@ function processFile(retry = false) {
                 // Fired periodically when a request receives more data
                 let total = Math.max(event.total, fileSize);
                 let uploaded = (chunkCount - 1) * chunkSize + event.loaded;
-                let percent = (uploaded / total) * 100;
+                percent = (uploaded / total) * 100;
+                percent = Math.max(percent, 1); // For large we want to show progress right from the start.
+                percent = Math.min(percent, 99); // Same goes for the end 100% before finish can be misleading.
                 eventTarget.dispatchEvent(
                     new CustomEvent("progress", {
-                        detail: { percent: percent },
+                        detail: { percent },
                     })
                 );
             };
