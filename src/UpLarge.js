@@ -9,7 +9,6 @@ let cloudName,
     fileSize,
     fromByte,
     toByte,
-    percent,
     retries,
     retriesCount,
     eventTarget;
@@ -23,7 +22,7 @@ function Uplarge(props) {
     fromByte = 0;
     toByte = 0;
     chunkCount = 0;
-    retries = 3;
+    retries = 5;
     retriesCount = 0;
     eventTarget = new EventTarget();
     return {
@@ -59,16 +58,24 @@ function processFile(retry = false) {
                     fromByte = toByte;
                     processFile();
                 } else {
-                    percent = 100;
                     eventTarget.dispatchEvent(
                         new CustomEvent("success", {
                             detail: { response: JSON.parse(res.response) },
                         })
                     );
                 }
-            } else if (retriesCount++ <= retries) {
-                console.info(`${retriesCount} retry of chunk ${chunkCount}`);
-                processFile(true);
+            } else if (retriesCount < retries) {
+                retriesCount++;
+                console.info(`${retriesCount} retries for chunk ${chunkCount}`);
+                setTimeout(() => {
+                    processFile(true);
+                }, 1000);
+            } else {
+                eventTarget.dispatchEvent(
+                    new CustomEvent("error", {
+                        detail: res,
+                    })
+                );
             }
         })
         .catch((error) => {
@@ -83,23 +90,7 @@ function processFile(retry = false) {
         formdata.append("public_id", publicId);
 
         let xhr = new XMLHttpRequest();
-
-        return new Promise(function (resolve, reject) {
-            xhr.onload = () => {
-                // Fired when an XMLHttpRequest transaction completes successfully
-                if (xhr.readyState !== 4) {
-                    return; // Only run if the request is complete (4 == Done)
-                }
-                if (parseInt(xhr.status / 100) === 2) {
-                    resolve(xhr);
-                } else {
-                    reject({
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                    });
-                }
-            };
-
+        return new Promise((resolve, reject) => {
             xhr.open(
                 "POST",
                 `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
@@ -110,25 +101,35 @@ function processFile(retry = false) {
                 "Content-Range",
                 `bytes ${fromByte}-${toByte}/${fileSize}`
             );
-            xhr.upload.onloadstart = function () {
+
+            xhr.upload.onload = () => {
+                // Fired when an XMLHttpRequest transaction completes successfully
+                if (xhr.readyState !== 4) {
+                    return; // Only run if the request is complete (4 == Done)
+                }
+                resolve(xhr);
+            };
+
+            xhr.upload.onloadstart = () => {
+                console.log("start", xhr)
                 // Fired when a request has started to load data
             };
 
-            xhr.onloadend = function () {
+            xhr.upload.onloadend = () => {
+                console.log("end", xhr)
                 // Fired when a request has been completed, whether successfully (after load) or unsuccessfully (after abort or error)
             };
 
-            xhr.upload.onabort = function () {
+            xhr.upload.onabort = () => {
+                resolve(xhr);
                 // Fired when a request has been aborted, for example, because the program called XMLHttpRequest.abort().
             };
 
-            xhr.upload.onprogress = function (event) {
+            xhr.upload.onprogress = (event) => {
                 // Fired periodically when a request receives more data
                 let total = Math.max(event.total, fileSize);
                 let uploaded = (chunkCount - 1) * chunkSize + event.loaded;
-                percent = (uploaded / total) * 100;
-                percent = Math.max(percent, 1); // For large we want to show progress right from the start.
-                percent = Math.min(percent, 99); // Same goes for the end 100% before finish can be misleading.
+                let percent = (uploaded / total) * 100;
                 eventTarget.dispatchEvent(
                     new CustomEvent("progress", {
                         detail: { percent },
@@ -136,28 +137,44 @@ function processFile(retry = false) {
                 );
             };
 
-            xhr.upload.ontimeout = function () {
-                // Fired when progress is terminated due to preset time expiring
+            xhr.upload.ontimeout = () => {
+                // Fired when progress is terminated due to preset time expiring.
+                resolve(xhr);
             };
 
-            xhr.upload.onerror = function (event) {
-                eventTarget.dispatchEvent(
-                    new CustomEvent("error", {
-                        detail: {
-                            status: xhr.status,
-                            message: event.target.responseText,
-                        },
-                    })
-                );
-                reject({
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                });
+            xhr.upload.onerror = () => {
+                // Fired when the request encountered an error.
+                resolve(xhr);
             };
 
             xhr.send(formdata);
         });
     }
 }
+
+const isRetryable = () => {
+    retriesCount++ <= retries;
+};
+
+function retry() {
+    if (retriesCount++ <= retries) {
+        console.info(`${retriesCount} retry of chunk ${chunkCount}`);
+        return processFile(true);
+    }
+
+    return new Promise((resolve) => {
+        setTimeout(async () => {
+            const chunkUploadSuccess = await this.sendChunkWithRetries(chunk);
+            resolve(chunkUploadSuccess);
+        }, 1000);
+    });
+}
+
+window.addEventListener("online", () => {
+    console.log("online");
+});
+window.addEventListener("offline", () => {
+    console.log("offline");
+});
 
 export default Uplarge;
