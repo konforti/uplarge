@@ -59,7 +59,7 @@ pickerEl.addEventListener("input", (e) => {
     upload(file);
     pickerEl.disabled = "disabled";
     let size = bytesFormat(file.size)
-    console.info(`Name: ${file.name} Size: ${size[0]} ${size[1]} Type: ${file.type}`);
+    console.debug(`Name: ${file.name} Size: ${size[0]} ${size[1]} Type: ${file.type}`);
     showProgress();
 });
 

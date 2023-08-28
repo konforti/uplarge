@@ -9,9 +9,20 @@ let cloudName,
     fileSize,
     fromByte,
     toByte,
+    offline,
     retries,
     retriesCount,
     eventTarget;
+
+window.addEventListener("online", () => {
+    offline = false;
+    console.debug("Online");
+});
+
+window.addEventListener("offline", () => {
+    offline = true;
+    console.debug("Offline");
+});
 
 function Uplarge(props) {
     xUniqueUploadId = +new Date();
@@ -21,6 +32,7 @@ function Uplarge(props) {
     chunkSize = 6000000; // Bytes (must be larger than 5,000,000)
     fromByte = 0;
     toByte = 0;
+    offline = false;
     chunkCount = 0;
     retries = 5;
     retriesCount = 0;
@@ -42,9 +54,14 @@ function uploadFile(fileToUpload) {
 }
 
 function processFile(retry = false) {
-    toByte = fromByte + parseInt(chunkSize);
+    if (offline) {
+        console.debug("Still offline ...");
+        return setTimeout(processFile, 1000, retry); // Wait for online and retry.
+    }
     if (toByte > fileSize) {
         toByte = fileSize;
+    } else {
+        toByte = fromByte + parseInt(chunkSize);
     }
     let part = file.slice(fromByte, toByte);
     if (!retry) {
@@ -52,10 +69,11 @@ function processFile(retry = false) {
     }
     send(part, fromByte, toByte - 1, fileSize)
         .then((res) => {
-            if (parseInt(res.status / 100) === 2) {
+            if (res.status / 100 === 2) {
                 retriesCount = 0;
                 if (toByte < fileSize) {
                     fromByte = toByte;
+                    console.debug(`Uploaded chunk number ${chunkCount}`);
                     processFile();
                 } else {
                     eventTarget.dispatchEvent(
@@ -66,10 +84,10 @@ function processFile(retry = false) {
                 }
             } else if (retriesCount < retries) {
                 retriesCount++;
-                console.info(`${retriesCount} retries for chunk ${chunkCount}`);
-                setTimeout(() => {
-                    processFile(true);
-                }, 1000);
+                console.debug(
+                    `${retriesCount}/${retries} retries to upload chunk number ${chunkCount}`
+                );
+                return setTimeout(processFile, 1000, true); // Retry with count.
             } else {
                 eventTarget.dispatchEvent(
                     new CustomEvent("error", {
@@ -95,14 +113,13 @@ function processFile(retry = false) {
                 "POST",
                 `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
             );
-            xhr.timeout = 60 * 60 * 1000;
             xhr.setRequestHeader("X-Unique-Upload-Id", xUniqueUploadId);
             xhr.setRequestHeader(
                 "Content-Range",
                 `bytes ${fromByte}-${toByte}/${fileSize}`
             );
 
-            xhr.upload.onload = () => {
+            xhr.onload = () => {
                 // Fired when an XMLHttpRequest transaction completes successfully
                 if (xhr.readyState !== 4) {
                     return; // Only run if the request is complete (4 == Done)
@@ -111,18 +128,16 @@ function processFile(retry = false) {
             };
 
             xhr.upload.onloadstart = () => {
-                console.log("start", xhr)
                 // Fired when a request has started to load data
             };
 
             xhr.upload.onloadend = () => {
-                console.log("end", xhr)
                 // Fired when a request has been completed, whether successfully (after load) or unsuccessfully (after abort or error)
             };
 
             xhr.upload.onabort = () => {
-                resolve(xhr);
                 // Fired when a request has been aborted, for example, because the program called XMLHttpRequest.abort().
+                resolve(xhr);
             };
 
             xhr.upload.onprogress = (event) => {
@@ -151,30 +166,5 @@ function processFile(retry = false) {
         });
     }
 }
-
-const isRetryable = () => {
-    retriesCount++ <= retries;
-};
-
-function retry() {
-    if (retriesCount++ <= retries) {
-        console.info(`${retriesCount} retry of chunk ${chunkCount}`);
-        return processFile(true);
-    }
-
-    return new Promise((resolve) => {
-        setTimeout(async () => {
-            const chunkUploadSuccess = await this.sendChunkWithRetries(chunk);
-            resolve(chunkUploadSuccess);
-        }, 1000);
-    });
-}
-
-window.addEventListener("online", () => {
-    console.log("online");
-});
-window.addEventListener("offline", () => {
-    console.log("offline");
-});
 
 export default Uplarge;
