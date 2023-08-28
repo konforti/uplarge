@@ -26,8 +26,9 @@ function upload(file) {
 
     uplarge.on.addEventListener("progress", (e) => {
         progressEl.value = Math.round(e.detail.percent);
-        // let speed = bytesFormat(e.detail.speed)
-        // infoEl.innerHTML = `${speed[0]} ${speed[1]}/s`;
+        statusEl.innerHTML = `${Math.round(e.detail.percent)}%`;
+        let speed = bytesFormat(e.detail.speed)
+        infoEl.innerHTML = `${speed[0]} ${speed[1]}/s`;
     });
     uplarge.on.addEventListener("success", (e) => {
         let res = e.detail.response;
