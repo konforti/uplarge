@@ -60,16 +60,15 @@ function processFile(retry = false) {
         console.debug("Still offline ...");
         return setTimeout(processFile, 1000, retry); // Wait for online and retry.
     }
+    toByte = fromByte + chunkSize;
     if (toByte > fileSize) {
         toByte = fileSize;
-    } else {
-        toByte = fromByte + parseInt(chunkSize);
     }
     let part = file.slice(fromByte, toByte);
     if (!retry) {
         chunkCount++;
     }
-    send(part, fromByte, toByte - 1, fileSize)
+    send(part)
         .then((res) => {
             if (res.status / 100 === 2) {
                 retriesCount = 0;
@@ -102,7 +101,7 @@ function processFile(retry = false) {
             console.error(error);
         });
 
-    function send(part, fromByte, toByte, fileSize) {
+    function send(part) {
         let formdata = new FormData();
         formdata.append("file", part);
         formdata.append("upload_preset", uploadPreset);
@@ -118,7 +117,7 @@ function processFile(retry = false) {
             xhr.setRequestHeader("X-Unique-Upload-Id", xUniqueUploadId);
             xhr.setRequestHeader(
                 "Content-Range",
-                `bytes ${fromByte}-${toByte}/${fileSize}`
+                `bytes ${fromByte}-${toByte - 1}/${fileSize}`
             );
 
             xhr.onload = () => {
