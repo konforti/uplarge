@@ -5,6 +5,8 @@ let clearEl = document.getElementById("clear");
 let statusEl = document.getElementById("status");
 let progressEl = document.getElementById("progress");
 let urlEl = document.getElementById("url");
+let errEl = document.getElementById("err");
+let fileInfoEl = document.getElementById("file-info");
 let containerEl = document.querySelector(".container");
 let progressToolsEl = document.querySelector(".progress-tools");
 let uploadToolsEl = document.querySelector(".upload-tools");
@@ -22,12 +24,12 @@ function upload(file) {
     let uplarge = Uplarge(props);
     uplarge.uploadFile(file);
 
-    uplarge.on.addEventListener("progress", (evt) => {
-        progressEl.value = Math.round(evt.detail.percent);
-        statusEl.innerHTML = `${Math.round(evt.detail.percent)}%`;
+    uplarge.on.addEventListener("progress", (e) => {
+        progressEl.value = Math.round(e.detail.percent);
+        statusEl.innerHTML = `${Math.round(e.detail.percent)}%`;
     });
-    uplarge.on.addEventListener("success", (evt) => {
-        let res = evt.detail.response;
+    uplarge.on.addEventListener("success", (e) => {
+        let res = e.detail.response;
         let url = res.playback_url;
         if (res.resource_type !== "video") {
             url = res.secure_url;
@@ -36,8 +38,9 @@ function upload(file) {
         urlEl.href = url;
         showFinish();
     });
-    uplarge.on.addEventListener("error", (evt) => {
-        errEl.innerHTML = `Error during the upload: [${evt.detail.status}] ${evt.detail.message}.`;
+    uplarge.on.addEventListener("error", (e) => {
+        errEl.innerHTML = `Error during the upload: [${e.detail.status}] ${e.detail.message}.`;
+        showFinish();
     });
 }
 
@@ -52,8 +55,11 @@ clearEl.addEventListener("click", (e) => {
 });
 
 pickerEl.addEventListener("input", (e) => {
-    upload(pickerEl.files[0]);
+    let file = pickerEl.files[0];
+    upload(file);
     pickerEl.disabled = "disabled";
+    let size = bytesFormat(file.size)
+    console.debug(`Name: ${file.name} Size: ${size[0]} ${size[1]} Type: ${file.type}`);
     showProgress();
 });
 
@@ -129,4 +135,14 @@ function showFinish() {
     uploadToolsEl.classList.remove("show");
     finishToolsEl.classList.add("show");
     finishToolsEl.classList.remove("hide");
+}
+
+const units = ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+function bytesFormat(x) {
+    let l = 0,
+        n = parseInt(x, 10) || 0;
+    while (n >= 1000 && ++l) {
+        n = n / 1000;
+    }
+    return [n.toFixed(n < 10 && l > 0 ? 1 : 0), units[l]];
 }

@@ -9,10 +9,20 @@ let cloudName,
     fileSize,
     fromByte,
     toByte,
-    percent,
+    offline,
     retries,
     retriesCount,
     eventTarget;
+
+window.addEventListener("online", () => {
+    offline = false;
+    console.debug("Online");
+});
+
+window.addEventListener("offline", () => {
+    offline = true;
+    console.debug("Offline");
+});
 
 function Uplarge(props) {
     xUniqueUploadId = +new Date();
@@ -22,8 +32,9 @@ function Uplarge(props) {
     chunkSize = 6000000; // Bytes (must be larger than 5,000,000)
     fromByte = 0;
     toByte = 0;
+    offline = false;
     chunkCount = 0;
-    retries = 3;
+    retries = 5;
     retriesCount = 0;
     eventTarget = new EventTarget();
     return {
@@ -43,9 +54,14 @@ function uploadFile(fileToUpload) {
 }
 
 function processFile(retry = false) {
-    toByte = fromByte + parseInt(chunkSize);
+    if (offline) {
+        console.debug("Still offline ...");
+        return setTimeout(processFile, 1000, retry); // Wait for online and retry.
+    }
     if (toByte > fileSize) {
         toByte = fileSize;
+    } else {
+        toByte = fromByte + parseInt(chunkSize);
     }
     let part = file.slice(fromByte, toByte);
     if (!retry) {
@@ -53,22 +69,31 @@ function processFile(retry = false) {
     }
     send(part, fromByte, toByte - 1, fileSize)
         .then((res) => {
-            if (parseInt(res.status / 100) === 2) {
+            if (res.status / 100 === 2) {
                 retriesCount = 0;
                 if (toByte < fileSize) {
                     fromByte = toByte;
+                    console.debug(`Uploaded chunk number ${chunkCount}`);
                     processFile();
                 } else {
-                    percent = 100;
                     eventTarget.dispatchEvent(
                         new CustomEvent("success", {
                             detail: { response: JSON.parse(res.response) },
                         })
                     );
                 }
-            } else if (retriesCount++ <= retries) {
-                console.info(`${retriesCount} retry of chunk ${chunkCount}`);
-                processFile(true);
+            } else if (retriesCount < retries) {
+                retriesCount++;
+                console.debug(
+                    `${retriesCount}/${retries} retries to upload chunk number ${chunkCount}`
+                );
+                return setTimeout(processFile, 1000, true); // Retry with count.
+            } else {
+                eventTarget.dispatchEvent(
+                    new CustomEvent("error", {
+                        detail: res,
+                    })
+                );
             }
         })
         .catch((error) => {
@@ -83,52 +108,43 @@ function processFile(retry = false) {
         formdata.append("public_id", publicId);
 
         let xhr = new XMLHttpRequest();
-
-        return new Promise(function (resolve, reject) {
-            xhr.onload = () => {
-                // Fired when an XMLHttpRequest transaction completes successfully
-                if (xhr.readyState !== 4) {
-                    return; // Only run if the request is complete (4 == Done)
-                }
-                if (parseInt(xhr.status / 100) === 2) {
-                    resolve(xhr);
-                } else {
-                    reject({
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                    });
-                }
-            };
-
+        return new Promise((resolve, reject) => {
             xhr.open(
                 "POST",
                 `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
             );
-            xhr.timeout = 60 * 60 * 1000;
             xhr.setRequestHeader("X-Unique-Upload-Id", xUniqueUploadId);
             xhr.setRequestHeader(
                 "Content-Range",
                 `bytes ${fromByte}-${toByte}/${fileSize}`
             );
-            xhr.upload.onloadstart = function () {
+
+            xhr.onload = () => {
+                // Fired when an XMLHttpRequest transaction completes successfully
+                if (xhr.readyState !== 4) {
+                    return; // Only run if the request is complete (4 == Done)
+                }
+                resolve(xhr);
+            };
+
+            xhr.upload.onloadstart = () => {
                 // Fired when a request has started to load data
             };
 
-            xhr.onloadend = function () {
+            xhr.upload.onloadend = () => {
                 // Fired when a request has been completed, whether successfully (after load) or unsuccessfully (after abort or error)
             };
 
-            xhr.upload.onabort = function () {
+            xhr.upload.onabort = () => {
                 // Fired when a request has been aborted, for example, because the program called XMLHttpRequest.abort().
+                resolve(xhr);
             };
 
-            xhr.upload.onprogress = function (event) {
+            xhr.upload.onprogress = (event) => {
                 // Fired periodically when a request receives more data
                 let total = Math.max(event.total, fileSize);
                 let uploaded = (chunkCount - 1) * chunkSize + event.loaded;
-                percent = (uploaded / total) * 100;
-                percent = Math.max(percent, 1); // For large we want to show progress right from the start.
-                percent = Math.min(percent, 99); // Same goes for the end 100% before finish can be misleading.
+                let percent = (uploaded / total) * 100;
                 eventTarget.dispatchEvent(
                     new CustomEvent("progress", {
                         detail: { percent },
@@ -136,23 +152,14 @@ function processFile(retry = false) {
                 );
             };
 
-            xhr.upload.ontimeout = function () {
-                // Fired when progress is terminated due to preset time expiring
+            xhr.upload.ontimeout = () => {
+                // Fired when progress is terminated due to preset time expiring.
+                resolve(xhr);
             };
 
-            xhr.upload.onerror = function (event) {
-                eventTarget.dispatchEvent(
-                    new CustomEvent("error", {
-                        detail: {
-                            status: xhr.status,
-                            message: event.target.responseText,
-                        },
-                    })
-                );
-                reject({
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                });
+            xhr.upload.onerror = () => {
+                // Fired when the request encountered an error.
+                resolve(xhr);
             };
 
             xhr.send(formdata);
