@@ -6,7 +6,7 @@ let statusEl = document.getElementById("status");
 let progressEl = document.getElementById("progress");
 let urlEl = document.getElementById("url");
 let errEl = document.getElementById("err");
-let fileInfoEl = document.getElementById("file-info");
+let infoEl = document.getElementById("info");
 let containerEl = document.querySelector(".container");
 let progressToolsEl = document.querySelector(".progress-tools");
 let uploadToolsEl = document.querySelector(".upload-tools");
@@ -27,6 +27,8 @@ function upload(file) {
     uplarge.on.addEventListener("progress", (e) => {
         progressEl.value = Math.round(e.detail.percent);
         statusEl.innerHTML = `${Math.round(e.detail.percent)}%`;
+        let speed = bytesFormat(e.detail.speed)
+        infoEl.innerHTML = `${speed[0]} ${speed[1]}/s`;
     });
     uplarge.on.addEventListener("success", (e) => {
         let res = e.detail.response;
@@ -58,8 +60,10 @@ pickerEl.addEventListener("input", (e) => {
     let file = pickerEl.files[0];
     upload(file);
     pickerEl.disabled = "disabled";
-    let size = bytesFormat(file.size)
-    console.debug(`Name: ${file.name} Size: ${size[0]} ${size[1]} Type: ${file.type}`);
+    let size = bytesFormat(file.size);
+    console.debug(
+        `Name: ${file.name} Size: ${size[0]} ${size[1]} Type: ${file.type}`
+    );
     showProgress();
 });
 
@@ -137,7 +141,7 @@ function showFinish() {
     finishToolsEl.classList.remove("hide");
 }
 
-const units = ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+const units = ["bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 function bytesFormat(x) {
     let l = 0,
         n = parseInt(x, 10) || 0;
