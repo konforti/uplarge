@@ -13,6 +13,7 @@ let uploadToolsEl = document.querySelector(".upload-tools");
 let finishToolsEl = document.querySelector(".finish-tools");
 
 function upload(file) {
+    let startTime = Date.now()
     let urlParams = new URLSearchParams(window.location.search);
     let cloudName = urlParams.get("cloud_name") || "demo";
     let uploadPreset = urlParams.get("upload_preset") || "unsigned";
@@ -28,11 +29,10 @@ function upload(file) {
         progressEl.value = Math.round(e.detail.percent);
         statusEl.innerHTML = `${Math.round(e.detail.percent)}%`;
         let speed = bytesFormat(e.detail.speed);
-        let bytesLeft = e.detail.total - e.detail.uploaded;
-        let secondsLeft = bytesLeft / e.detail.speed;
+        let bytesLeft = Math.max(e.detail.total - e.detail.uploaded, 0);
+        let secondsLeft = Math.max(bytesLeft / e.detail.speed, 0);
         let uploaded = bytesFormat(e.detail.uploaded);
         let total = bytesFormat(e.detail.total);
-
         infoEl.innerHTML = `${speed[0]} ${speed[1]}/s · ${uploaded[0]} ${
             uploaded[1]
         }/${total[0]} ${total[1]} · ${formatTime(secondsLeft)} left`;

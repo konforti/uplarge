@@ -143,11 +143,11 @@ function processFile(retry = false) {
 
             xhr.upload.onprogress = (event) => {
                 // Fired periodically when a request receives more data
-                let total = Math.max(event.total, fileSize);
-                let uploaded = (chunkCount - 1) * chunkSize + event.loaded;
+                let total = Math.max(event.total, fileSize); // Bytes
+                let uploaded = (chunkCount - 1) * chunkSize + event.loaded; // Bytes
                 let percent = (uploaded / total) * 100;
-                let elapsed = (Date.now() - startTime) / 1000; //
-                let speed = uploaded / elapsed;
+                let elapsed = (Date.now() - startTime) / 1000; // Seconds
+                let speed = Math.max(uploaded / elapsed, 1); // Bytes/Second
                 eventTarget.dispatchEvent(
                     new CustomEvent("progress", {
                         detail: { percent, speed, uploaded, total },
