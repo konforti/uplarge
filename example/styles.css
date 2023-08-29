@@ -44,8 +44,12 @@ input[type="file"] {
 
 .progress-tools {
     display: block;
-    width: 150px;
+    width: 300px;
     margin: 0 auto;
+}
+
+#info {
+    font-size: 12px;
 }
 
 .finish-tools {

@@ -51,7 +51,7 @@ function uploadFile(fileToUpload) {
     file = fileToUpload;
     fileSize = file.size;
     totalChunks = Math.ceil(fileSize / chunkSize);
-    startTime = performance.now();
+    startTime = Date.now();
     processFile();
 }
 
@@ -146,7 +146,7 @@ function processFile(retry = false) {
                 let total = Math.max(event.total, fileSize);
                 let uploaded = (chunkCount - 1) * chunkSize + event.loaded;
                 let percent = (uploaded / total) * 100;
-                let elapsed = (performance.now() - startTime) / 1000;
+                let elapsed = (Date.now() - startTime) / 1000; //
                 let speed = uploaded / elapsed;
                 eventTarget.dispatchEvent(
                     new CustomEvent("progress", {

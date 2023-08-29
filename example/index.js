@@ -27,8 +27,15 @@ function upload(file) {
     uplarge.on.addEventListener("progress", (e) => {
         progressEl.value = Math.round(e.detail.percent);
         statusEl.innerHTML = `${Math.round(e.detail.percent)}%`;
-        let speed = bytesFormat(e.detail.speed)
-        infoEl.innerHTML = `${speed[0]} ${speed[1]}/s`;
+        let speed = bytesFormat(e.detail.speed);
+        let bytesLeft = e.detail.total - e.detail.uploaded;
+        let secondsLeft = bytesLeft / e.detail.speed;
+        let uploaded = bytesFormat(e.detail.uploaded);
+        let total = bytesFormat(e.detail.total);
+
+        infoEl.innerHTML = `${speed[0]} ${speed[1]}/s · ${uploaded[0]} ${
+            uploaded[1]
+        }/${total[0]} ${total[1]} · ${formatTime(secondsLeft)} left`;
     });
     uplarge.on.addEventListener("success", (e) => {
         let res = e.detail.response;
@@ -149,4 +156,13 @@ function bytesFormat(x) {
         n = n / 1000;
     }
     return [n.toFixed(n < 10 && l > 0 ? 1 : 0), units[l]];
+}
+
+function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.round(seconds % 60);
+    return [h, m > 9 ? m : h ? "0" + m : m || "0", s > 9 ? s : "0" + s]
+        .filter(Boolean)
+        .join(":");
 }
