@@ -165,6 +165,10 @@ function processFile(retry = false) {
                 resolve(xhr);
             };
 
+            xhr.onerror = (e) => {
+                console.log(e);
+            };
+
             xhr.send(formdata);
         });
     }
