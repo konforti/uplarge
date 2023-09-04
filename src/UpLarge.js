@@ -68,13 +68,15 @@ function processFile(retry = false) {
     if (!retry) {
         chunkCount++;
     }
-    send(part)
+    sendChunk(part)
         .then((res) => {
             if (res.status / 100 === 2) {
                 retriesCount = 0;
                 if (toByte < fileSize) {
                     fromByte = toByte;
-                    console.debug(`Uploaded chunk number ${chunkCount}`);
+                    console.debug(
+                        `Uploaded chunk ${chunkCount}/${totalChunks}`
+                    );
                     processFile();
                 } else {
                     eventTarget.dispatchEvent(
@@ -86,7 +88,7 @@ function processFile(retry = false) {
             } else if (retriesCount < retries) {
                 retriesCount++;
                 console.debug(
-                    `${retriesCount}/${retries} retries to upload chunk number ${chunkCount}`
+                    `${retriesCount}/${retries} retries chunk ${chunkCount}`
                 );
                 return setTimeout(processFile, 1000, true); // Retry with count.
             } else {
@@ -101,7 +103,7 @@ function processFile(retry = false) {
             console.error(error);
         });
 
-    function send(part) {
+    function sendChunk(part) {
         let formdata = new FormData();
         formdata.append("file", part);
         formdata.append("upload_preset", uploadPreset);
@@ -121,27 +123,23 @@ function processFile(retry = false) {
             );
 
             xhr.onload = () => {
-                // Fired when an XMLHttpRequest transaction completes successfully
-                if (xhr.readyState !== 4) {
-                    return; // Only run if the request is complete (4 == Done)
-                }
                 resolve(xhr);
             };
 
-            xhr.upload.onloadstart = () => {
+            xhr.onloadstart = () => {
                 // Fired when a request has started to load data
             };
 
-            xhr.upload.onloadend = () => {
+            xhr.onloadend = () => {
                 // Fired when a request has been completed, whether successfully (after load) or unsuccessfully (after abort or error)
             };
 
-            xhr.upload.onabort = () => {
+            xhr.onabort = () => {
                 // Fired when a request has been aborted, for example, because the program called XMLHttpRequest.abort().
                 resolve(xhr);
             };
 
-            xhr.upload.onprogress = (event) => {
+            xhr.onprogress = (event) => {
                 // Fired periodically when a request receives more data
                 let total = Math.max(event.total, fileSize); // Bytes
                 let uploaded = (chunkCount - 1) * chunkSize + event.loaded; // Bytes
@@ -155,18 +153,14 @@ function processFile(retry = false) {
                 );
             };
 
-            xhr.upload.ontimeout = () => {
+            xhr.ontimeout = () => {
                 // Fired when progress is terminated due to preset time expiring.
                 resolve(xhr);
             };
 
-            xhr.upload.onerror = () => {
+            xhr.onerror = () => {
                 // Fired when the request encountered an error.
                 resolve(xhr);
-            };
-
-            xhr.onerror = (e) => {
-                console.log(e);
             };
 
             xhr.send(formdata);

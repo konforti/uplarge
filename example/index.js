@@ -7,13 +7,14 @@ let progressEl = document.getElementById("progress");
 let urlEl = document.getElementById("url");
 let errEl = document.getElementById("err");
 let infoEl = document.getElementById("info");
+let completedEl = document.querySelector("completed");
 let containerEl = document.querySelector(".container");
 let progressToolsEl = document.querySelector(".progress-tools");
 let uploadToolsEl = document.querySelector(".upload-tools");
 let finishToolsEl = document.querySelector(".finish-tools");
 
 function upload(file) {
-    let startTime = Date.now()
+    let startTime = Date.now();
     let urlParams = new URLSearchParams(window.location.search);
     let cloudName = urlParams.get("cloud_name") || "demo";
     let uploadPreset = urlParams.get("upload_preset") || "unsigned";
@@ -37,7 +38,9 @@ function upload(file) {
             uploaded[1]
         }/${total[0]} ${total[1]} · ${formatTime(secondsLeft)} left`;
     });
+
     uplarge.on.addEventListener("success", (e) => {
+        completedEl.innerHTML = "Upload Completed Successfully!";
         let res = e.detail.response;
         let url = res.playback_url;
         if (res.resource_type !== "video") {
@@ -47,8 +50,14 @@ function upload(file) {
         urlEl.href = url;
         showFinish();
     });
+
     uplarge.on.addEventListener("error", (e) => {
-        errEl.innerHTML = `Error during the upload: [${e.detail.status}] ${e.detail.message}.`;
+        completedEl.innerHTML = "There was an upload error";
+        if (e.detail.responseText) {
+            let err = JSON.parse(e.detail.responseText);
+            let errText = err.error.message;
+            errEl.innerHTML = `${e.detail.status} (${e.detail.statusText}) - ${errText}`;
+        }
         showFinish();
     });
 }
